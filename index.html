@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Reddit Tools</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --accent: #ff6b6b;
+  --accent-hover: #ff5252;
+  --success: #51cf66;
+  --info: #4dabf7;
+  --text: #f0f6fc;
+  --text-muted: #8b949e;
+  --border: #30363d;
+  --shadow: rgba(0, 0, 0, 0.4);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(135deg, var(--bg-primary) 0%, #0a0e14 100%);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Animated Background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(255, 107, 107, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(81, 207, 102, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 40% 20%, rgba(77, 171, 247, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+  animation: pulse 15s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Floating Orbs */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 0;
+  animation: float 20s ease-in-out infinite;
+}
+
+.orb-1 {
+  width: 400px;
+  height: 400px;
+  background: var(--accent);
+  top: -200px;
+  left: -200px;
+}
+
+.orb-2 {
+  width: 350px;
+  height: 350px;
+  background: var(--success);
+  bottom: -150px;
+  right: -150px;
+  animation-delay: -7s;
+}
+
+.orb-3 {
+  width: 300px;
+  height: 300px;
+  background: var(--info);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: -14s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+
+.container {
+  max-width: 1200px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 60px;
+  animation: fadeInDown 0.8s ease;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.logo {
+  font-size: 4rem;
+  margin-bottom: 10px;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.title {
+  font-size: 3.5rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--accent), var(--success), var(--info));
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 15px;
+  animation: gradient 8s ease infinite;
+  letter-spacing: -1px;
+}
+
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.subtitle {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Cards Grid */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 30px;
+  margin-top: 40px;
+}
+
+/* Card */
+.tool-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 40px 35px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeInUp 0.8s ease;
+  animation-fill-mode: both;
+  text-decoration: none;
+  display: block;
+}
+
+.tool-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.tool-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tool-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent), var(--info));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s ease;
+}
+
+.tool-card:hover::before {
+  transform: scaleX(1);
+}
+
+.tool-card:hover {
+  transform: translateY(-8px);
+  border-color: var(--accent);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.tool-card::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 107, 107, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.tool-card:hover::after {
+  width: 500px;
+  height: 500px;
+}
+
+.card-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  display: block;
+  animation: float-icon 3s ease-in-out infinite;
+}
+
+@keyframes float-icon {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.card-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 15px;
+  position: relative;
+  z-index: 1;
+}
+
+.card-description {
+  font-size: 1rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 25px;
+  position: relative;
+  z-index: 1;
+}
+
+.card-features {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 30px;
+  position: relative;
+  z-index: 1;
+}
+
+.card-features li {
+  padding: 8px 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-features li::before {
+  content: '✓';
+  color: var(--success);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.card-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 30px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-button:hover {
+  background: var(--accent-hover);
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(255, 107, 107, 0.4);
+}
+
+.card-button::after {
+  content: '→';
+  transition: transform 0.3s ease;
+}
+
+.tool-card:hover .card-button::after {
+  transform: translateX(5px);
+}
+
+/* Badge */
+.badge {
+  display: inline-block;
+  padding: 6px 14px;
+  background: rgba(255, 107, 107, 0.15);
+  color: var(--accent);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.badge.success {
+  background: rgba(81, 207, 102, 0.15);
+  color: var(--success);
+  border-color: rgba(81, 207, 102, 0.3);
+}
+
+.badge.info {
+  background: rgba(77, 171, 247, 0.15);
+  color: var(--info);
+  border-color: rgba(77, 171, 247, 0.3);
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  margin-top: 60px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  animation: fadeIn 1s ease 0.5s both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.footer a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .title {
+    font-size: 2.5rem;
+  }
+  
+  .subtitle {
+    font-size: 1rem;
+  }
+  
+  .cards-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .tool-card {
+    padding: 30px 25px;
+  }
+  
+  .card-icon {
+    font-size: 3rem;
+  }
+  
+  .card-title {
+    font-size: 1.5rem;
+  }
+  
+  .logo {
+    font-size: 3rem;
+  }
+}
+
+/* Loading Animation */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.tool-card:active {
+  transform: translateY(-5px) scale(0.98);
+}
+</style>
+</head>
+<body>
+
+<!-- Floating Orbs -->
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">🚀</div>
+    <h1 class="title">Reddit Tools</h1>
+    <p class="subtitle">Professional automation toolkit for Reddit management</p>
+  </div>
+
+  <!-- Cards Grid -->
+  <div class="cards-grid">
+    
+    <!-- Reddit Manager Pro -->
+    <a href="reddit-manager-pro.html" class="tool-card">
+      <span class="badge">Automation</span>
+      <span class="card-icon">🎯</span>
+      <h2 class="card-title">Manager Pro</h2>
+      <p class="card-description">
+        Complete Reddit automation suite with account management, posting scheduler, and CatScript integration
+      </p>
+      <ul class="card-features">
+        <li>Account & profile management</li>
+        <li>Location-based posting</li>
+        <li>Caption rotation system</li>
+        <li>CatScript API integration</li>
+        <li>IP rotation & monitoring</li>
+        <li>Live account status checker</li>
+      </ul>
+      <button class="card-button">Launch Manager</button>
+    </a>
+
+    <!-- Reddit Analyzer -->
+    <a href="reddit-analyzer.html" class="tool-card">
+      <span class="badge info">Analytics</span>
+      <span class="card-icon">📊</span>
+      <h2 class="card-title">Analyzer</h2>
+      <p class="card-description">
+        Powerful analytics tool for Reddit posts with username analysis, shortlink calculator, and smart targeting
+      </p>
+      <ul class="card-features">
+        <li>Username post analysis</li>
+        <li>Shortlink target calculator</li>
+        <li>Smart upvote recommendations</li>
+        <li>Filter by subreddit & date</li>
+        <li>Export to CSV format</li>
+        <li>Real-time hot post tracking</li>
+      </ul>
+      <button class="card-button">Launch Analyzer</button>
+    </a>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>Built with ❤️ for efficient Reddit management</p>
+    <p style="margin-top: 10px; font-size: 0.85rem;">
+      All tools run 100% client-side • No data collection • Open source
+    </p>
+  </div>
+</div>
+
+<script>
+// Add subtle parallax effect on mouse move
+document.addEventListener('mousemove', (e) => {
+  const cards = document.querySelectorAll('.tool-card');
+  const x = e.clientX / window.innerWidth;
+  const y = e.clientY / window.innerHeight;
+  
+  cards.forEach((card, index) => {
+    const speed = (index + 1) * 10;
+    const xOffset = (x - 0.5) * speed;
+    const yOffset = (y - 0.5) * speed;
+    
+    card.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
+  });
+});
+
+// Add click animation
+document.querySelectorAll('.tool-card').forEach(card => {
+  card.addEventListener('click', function(e) {
+    // Create ripple effect
+    const ripple = document.createElement('div');
+    ripple.style.position = 'absolute';
+    ripple.style.borderRadius = '50%';
+    ripple.style.background = 'rgba(255, 107, 107, 0.3)';
+    ripple.style.width = '20px';
+    ripple.style.height = '20px';
+    ripple.style.pointerEvents = 'none';
+    ripple.style.animation = 'ripple 0.6s ease-out';
+    
+    const rect = card.getBoundingClientRect();
+    ripple.style.left = (e.clientX - rect.left - 10) + 'px';
+    ripple.style.top = (e.clientY - rect.top - 10) + 'px';
+    
+    card.appendChild(ripple);
+    
+    setTimeout(() => ripple.remove(), 600);
+  });
+});
+
+// Add ripple animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes ripple {
+    from {
+      transform: scale(1);
+      opacity: 1;
+    }
+    to {
+      transform: scale(20);
+      opacity: 0;
+    }
+  }
+`;
+document.head.appendChild(style);
+
+// Smooth scroll reveal animation
+const observerOptions = {
+  threshold: 0.1,
+  rootMargin: '0px 0px -50px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.style.opacity = '1';
+      entry.target.style.transform = 'translateY(0)';
+    }
+  });
+}, observerOptions);
+
+document.querySelectorAll('.tool-card').forEach(card => {
+  observer.observe(card);
+});
+</script>
+
+</body>
+</html>
