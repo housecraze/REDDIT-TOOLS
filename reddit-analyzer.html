@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reddit Analyzer Pro — All-in-One Tool</title>
+    <style>
+        :root { 
+            --reddit: #ff4500; 
+            --green: #10b981; 
+            --blue: #3b82f6;
+            --purple: #a855f7;
+            --dark: #0f172a;
+            --darker: #020617;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            background: var(--darker);
+            min-height: 100vh;
+            color: #e2e8f0;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(255, 69, 0, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .container { 
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        header { 
+            text-align: center;
+            margin-bottom: 50px;
+            animation: fadeInDown 0.6s ease;
+        }
+        
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        h1 { 
+            margin: 0 0 12px;
+            font-size: 3.5em;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ff4500, #ff6b35, #f59f00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+            text-shadow: 0 0 40px rgba(255, 69, 0, 0.3);
+        }
+        
+        .tagline {
+            color: #94a3b8;
+            font-size: 1.1em;
+            font-weight: 500;
+            margin-bottom: 30px;
+        }
+        
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .tab-btn {
+            padding: 14px 32px;
+            font-size: 1.05em;
+            font-weight: 700;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(15, 23, 42, 0.6);
+            color: #94a3b8;
+        }
+        
+        .tab-btn:hover {
+            border-color: var(--reddit);
+            color: #e2e8f0;
+            transform: translateY(-2px);
+        }
+        
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--reddit), #e03d00);
+            color: white;
+            border-color: var(--reddit);
+            box-shadow: 0 8px 20px rgba(255, 69, 0, 0.3);
+        }
+        
+        .tab-content {
+            display: none;
+            animation: fadeInUp 0.5s ease;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .search-card { 
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+        
+        .search-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        input { 
+            flex: 1;
+            min-width: 280px;
+            padding: 18px 24px;
+            font-size: 1.1em;
+            background: rgba(30, 41, 59, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            color: #e2e8f0;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: var(--reddit);
+            background: rgba(30, 41, 59, 0.9);
+            box-shadow: 0 0 0 4px rgba(255, 69, 0, 0.1);
+        }
+        
+        input::placeholder {
+            color: #64748b;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 20px 24px;
+            font-size: 1.05em;
+            background: rgba(30, 41, 59, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            color: #e2e8f0;
+            transition: all 0.3s ease;
+            font-family: 'Monaco', 'Courier New', monospace;
+            resize: vertical;
+            min-height: 200px;
+            margin-bottom: 20px;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: var(--reddit);
+            background: rgba(30, 41, 59, 0.9);
+            box-shadow: 0 0 0 4px rgba(255, 69, 0, 0.1);
+        }
+        
+        textarea::placeholder {
+            color: #64748b;
+        }
+        
+        button {
+            padding: 18px 36px;
+            font-size: 1.05em;
+            font-weight: 700;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        button.load { 
+            background: linear-gradient(135deg, var(--reddit), #e03d00);
+            color: white;
+            box-shadow: 0 8px 20px rgba(255, 69, 0, 0.3);
+        }
+        
+        button.load:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(255, 69, 0, 0.4);
+        }
+        
+        button.load:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        button.copyall { 
+            background: linear-gradient(135deg, var(--green), #059669);
+            color: white;
+            display: none;
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }
+        
+        button.copyall:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(16, 185, 129, 0.4);
+        }
+        
+        button.secondary {
+            background: linear-gradient(135deg, var(--purple), #9333ea);
+            color: white;
+            box-shadow: 0 8px 20px rgba(168, 85, 247, 0.3);
+        }
+        
+        button.secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(168, 85, 247, 0.4);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .info { 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 30px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 16px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        #status, #statusShortlink {
+            color: #94a3b8;
+            font-weight: 600;
+            font-size: 1.05em;
+        }
+        
+        #stats, #statsShortlink {
+            background: rgba(239, 68, 68, 0.2);
+            padding: 8px 16px;
+            border-radius: 12px;
+            color: #fca5a5;
+            font-weight: 700;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        /* Filter Controls */
+        .filter-controls {
+            background: rgba(30, 41, 59, 0.4);
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-controls label {
+            color: #94a3b8;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+        
+        .filter-controls select {
+            padding: 10px 16px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #e2e8f0;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .filter-controls select:focus {
+            outline: none;
+            border-color: var(--blue);
+        }
+        
+        .posts { 
+            display: grid;
+            gap: 20px;
+        }
+        
+        .post {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 4px solid var(--reddit);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .post:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .main-line {
+            padding: 24px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+            gap: 20px;
+        }
+        
+        .main-line:hover { 
+            background: rgba(30, 41, 59, 0.4);
+        }
+        
+        .title-link { 
+            font-size: 1.25em;
+            font-weight: 700;
+            color: #60a5fa;
+            text-decoration: none;
+            transition: color 0.2s;
+            line-height: 1.4;
+        }
+        
+        .title-link:hover { 
+            color: #93c5fd;
+        }
+        
+        .meta { 
+            color: #94a3b8;
+            font-size: 0.95em;
+            margin-top: 8px;
+            font-weight: 500;
+        }
+        
+        .full-url {
+            color: #60a5fa;
+            font-size: 0.9em;
+            margin-top: 10px;
+            word-break: break-all;
+            padding: 12px;
+            background: rgba(30, 41, 59, 0.4);
+            border-radius: 8px;
+            border-left: 3px solid var(--blue);
+        }
+        
+        .full-url a {
+            color: #93c5fd;
+            text-decoration: none;
+        }
+        
+        .full-url a:hover {
+            text-decoration: underline;
+        }
+        
+        .actions-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .need { 
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--green), #059669);
+            color: white;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            white-space: nowrap;
+        }
+        
+        .need:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+        
+        .need.error {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            cursor: default;
+        }
+        
+        .need.error:hover {
+            transform: none;
+        }
+        
+        .removed { 
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: white;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.95em;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+            white-space: nowrap;
+        }
+        
+        .copy-btn { 
+            padding: 10px 20px;
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 2px solid rgba(59, 130, 246, 0.4);
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .copy-btn:hover { 
+            background: rgba(59, 130, 246, 0.3);
+            border-color: var(--blue);
+        }
+        
+        .copy-btn.copied { 
+            background: rgba(16, 185, 129, 0.3);
+            border-color: var(--green);
+            color: #6ee7b7;
+        }
+        
+        .dropdown {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+            background: rgba(30, 41, 59, 0.4);
+            padding: 0 28px;
+        }
+        
+        .dropdown.open { 
+            max-height: 900px;
+            padding: 28px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .dropdown strong {
+            color: #e2e8f0;
+            font-size: 1.05em;
+        }
+        
+        .top-list { 
+            list-style: none;
+            padding: 0;
+            margin: 16px 0 0;
+            counter-reset: item;
+        }
+        
+        .top-list li { 
+            margin: 12px 0;
+            padding: 16px 20px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 12px;
+            border-left: 3px solid var(--reddit);
+            transition: all 0.2s;
+            counter-increment: item;
+            position: relative;
+            padding-left: 50px;
+        }
+        
+        .top-list li::before {
+            content: counter(item);
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--reddit);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85em;
+        }
+        
+        .top-list li:hover { 
+            background: rgba(30, 41, 59, 0.6);
+            transform: translateX(4px);
+        }
+        
+        .top-list a { 
+            color: #cbd5e1;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        
+        .top-list a:hover { 
+            color: var(--reddit);
+        }
+        
+        .age { 
+            color: #64748b;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+        
+        .footer { 
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+            font-size: 0.95em;
+            margin-top: 60px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .filtered-section { 
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 2px dashed rgba(239, 68, 68, 0.3);
+        }
+        
+        .filtered-section h3 { 
+            margin: 0 0 25px;
+            color: #fca5a5;
+            font-size: 1.5em;
+            font-weight: 700;
+        }
+        
+        /* Summary Stats */
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--reddit), #f59f00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5em; }
+            .search-card { padding: 25px; }
+            .main-line { flex-direction: column; align-items: flex-start; }
+            .actions-group { width: 100%; justify-content: flex-start; }
+            input { min-width: 100%; }
+            .tab-nav { gap: 8px; }
+            .tab-btn { padding: 12px 24px; font-size: 0.95em; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Reddit Analyzer Pro</h1>
+        <div class="tagline">Complete analysis toolkit • Smart targeting • Zero detection</div>
+    </header>
+    
+    <!-- Tab Navigation -->
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('username')">👤 Username Analysis</button>
+        <button class="tab-btn" onclick="switchTab('shortlink')">🔗 Shortlink Calculator</button>
+    </div>
+    
+    <!-- Username Analysis Tab -->
+    <div id="username-tab" class="tab-content active">
+        <div class="search-card">
+            <div class="search-container">
+                <input type="text" id="username" placeholder="Enter Reddit username (no u/)" autofocus>
+                <button class="load" onclick="loadUserPosts()" id="loadUserBtn">Load Posts</button>
+            </div>
+            <div class="action-buttons">
+                <button class="copyall" id="copyAllBtn" onclick="copyAllUpvotes()">Copy All Upvotes</button>
+                <button class="copyall" id="copyLinksBtn" onclick="copyAllLinks()">Copy All Links</button>
+                <button class="copyall" id="exportBtn" onclick="exportToCSV()">Export to CSV</button>
+            </div>
+        </div>
+        
+        <!-- Filter Controls -->
+        <div class="filter-controls" id="filterControls" style="display: none;">
+            <label>Sort by:</label>
+            <select id="sortSelect" onchange="applySortFilter()">
+                <option value="date-desc">Newest First</option>
+                <option value="date-asc">Oldest First</option>
+                <option value="score-desc">Highest Score</option>
+                <option value="score-asc">Lowest Score</option>
+                <option value="target-desc">Highest Target</option>
+                <option value="target-asc">Lowest Target</option>
+            </select>
+            
+            <label>Filter by subreddit:</label>
+            <select id="subredditFilter" onchange="applySubredditFilter()">
+                <option value="all">All Subreddits</option>
+            </select>
+        </div>
+        
+        <!-- Summary Stats -->
+        <div class="summary-stats" id="summaryStats" style="display: none;"></div>
+        
+        <div class="info">
+            <span id="status">Enter username → see smart natural speed</span>
+            <span id="stats"></span>
+        </div>
+        
+        <div class="posts" id="posts"></div>
+    </div>
+    
+    <!-- Shortlink Calculator Tab -->
+    <div id="shortlink-tab" class="tab-content">
+        <div class="search-card">
+            <textarea id="links" placeholder="Paste Reddit short links (one per line)
+
+Examples:
+https://www.reddit.com/r/dressedhot/s/KWxuPi89Du
+https://reddit.com/r/sub/s/abc123
+
+Works with full links too!"></textarea>
+            <div class="action-buttons">
+                <button class="load" onclick="loadShortlinks()" id="loadShortlinkBtn">Calculate Targets</button>
+                <button class="copyall" id="copyAllTargetsBtn" onclick="copyAllTargets()">Copy All Targets</button>
+                <button class="copyall" id="copyShortlinksBtn" onclick="copyAllShortlinks()">Copy All Links</button>
+            </div>
+        </div>
+        
+        <div class="info">
+            <span id="statusShortlink">Extracts subreddit → shows top 5 hot + realistic upvote target</span>
+            <span id="statsShortlink"></span>
+        </div>
+        
+        <div class="posts" id="postsShortlink"></div>
+    </div>
+    
+    <div class="footer">
+        Click any post to show/hide details • 100% client-side • Always safe & natural<br>
+        Powered by corsproxy.io (2025 working proxy) • No login required
+    </div>
+</div>
+
+<script>
+// Global variables
+const allNeededNumbers = [];
+const allShortlinkTargets = [];
+let allUserPosts = [];
+let currentSort = 'date-desc';
+const PROXY = 'https://corsproxy.io/?';
+
+// Tab switching
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    
+    if (tab === 'username') {
+        document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+        document.getElementById('username-tab').classList.add('active');
+    } else {
+        document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+        document.getElementById('shortlink-tab').classList.add('active');
+    }
+}
+
+// Proxy fetch function
+async function fetchWithProxy(url) {
+    const proxyUrl = PROXY + encodeURIComponent(url);
+    const res = await fetch(proxyUrl, { 
+        headers: { 'User-Agent': 'RedditAnalyzerPro/2.0' } 
+    });
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: Proxy or Reddit error`);
+    }
+    const contentType = res.headers.get('content-type');
+    if (contentType && !contentType.includes('application/json')) {
+        const text = await res.text();
+        console.error('Non-JSON response:', text.substring(0, 300));
+        throw new Error('Proxy returned non-JSON');
+    }
+    return await res.json();
+}
+
+// USERNAME ANALYSIS FUNCTIONS
+async function loadUserPosts() {
+    const username = document.getElementById('username').value.trim();
+    if (!username) return alert("Enter a username");
+  
+    const status = document.getElementById('status');
+    const stats = document.getElementById('stats');
+    const container = document.getElementById('posts');
+    const loadBtn = document.getElementById('loadUserBtn');
+    
+    container.innerHTML = '';
+    allNeededNumbers.length = 0;
+    allUserPosts = [];
+    
+    document.getElementById('copyAllBtn').style.display = 'none';
+    document.getElementById('copyLinksBtn').style.display = 'none';
+    document.getElementById('exportBtn').style.display = 'none';
+    document.getElementById('filterControls').style.display = 'none';
+    document.getElementById('summaryStats').style.display = 'none';
+    
+    loadBtn.disabled = true;
+    status.textContent = 'Loading user posts…';
+    
+    let after = null;
+    let goodPosts = [];
+    let filteredPosts = [];
+    const cache = new Map();
+    const subreddits = new Set();
+    
+    try {
+        do {
+            let url = `https://www.reddit.com/user/${username}/submitted/.json?limit=100`;
+            if (after) url += `&after=${after}`;
+            url += `&t=${Date.now()}`;
+            
+            const json = await fetchWithProxy(url);
+            
+            for (const child of json.data.children) {
+                const p = child.data;
+                let removalReason = null;
+                
+                if (p.author === "[deleted]") {
+                    removalReason = "Deleted by user";
+                } else if (p.selftext === "[removed]" || p.selftext === "[deleted]" || p.is_robot_indexable === false) {
+                    removalReason = p.removed_by_category
+                        ? (p.removed_by_category === "moderator" ? "Removed by Moderator" : "Removed by Reddit")
+                        : "Removed";
+                } else if (p.banned_by || p.removal_reason || p.quarantined) {
+                    removalReason = "Removed by Moderator";
+                } else if (p.title.toLowerCase().includes("removed")) {
+                    removalReason = "Removed (title)";
+                }
+                
+                const postObj = {
+                    title: p.title,
+                    url: `https://www.reddit.com${p.permalink}`,
+                    subreddit: p.subreddit,
+                    score: p.score || 0,
+                    date: new Date(p.created_utc * 1000).toLocaleDateString(),
+                    dateRaw: p.created_utc,
+                    removalReason,
+                    numComments: p.num_comments || 0
+                };
+                
+                if (removalReason) {
+                    filteredPosts.push(postObj);
+                } else {
+                    goodPosts.push(postObj);
+                    subreddits.add(p.subreddit);
+                }
+            }
+            
+            after = json.data.after;
+            if (after) await new Promise(r => setTimeout(r, 1100));
+        } while (after);
+        
+        goodPosts.sort((a, b) => b.dateRaw - a.dateRaw);
+        filteredPosts.sort((a, b) => b.dateRaw - a.dateRaw);
+        allUserPosts = goodPosts;
+        
+        // Populate subreddit filter
+        const subredditFilter = document.getElementById('subredditFilter');
+        subredditFilter.innerHTML = '<option value="all">All Subreddits</option>';
+        Array.from(subreddits).sort().forEach(sub => {
+            subredditFilter.innerHTML += `<option value="${sub}">/r/${sub}</option>`;
+        });
+        
+        status.textContent = 'Calculating smart upvotes…';
+        
+        // Calculate summary stats
+        displaySummaryStats(goodPosts, filteredPosts);
+        
+        // Load posts
+        for (const post of goodPosts) {
+            await renderPost(post, container, cache);
+        }
+        
+        // Render filtered posts
+        if (filteredPosts.length > 0) {
+            renderFilteredPosts(filteredPosts, container);
+        }
+        
+        if (allNeededNumbers.length > 0) {
+            document.getElementById('copyAllBtn').style.display = 'inline-block';
+            document.getElementById('copyLinksBtn').style.display = 'inline-block';
+            document.getElementById('exportBtn').style.display = 'inline-block';
+            document.getElementById('filterControls').style.display = 'flex';
+        }
+        
+        status.textContent = `Done — ${goodPosts.length} Successfully Posted • ${filteredPosts.length} Filtered Out`;
+        stats.textContent = filteredPosts.length ? `${filteredPosts.length} removed` : "All clean";
+        
+    } catch (e) {
+        status.textContent = `Error: ${e.message}`;
+        console.error(e);
+    } finally {
+        loadBtn.disabled = false;
+    }
+}
+
+function displaySummaryStats(goodPosts, filteredPosts) {
+    const container = document.getElementById('summaryStats');
+    const totalScore = goodPosts.reduce((sum, p) => sum + p.score, 0);
+    const avgScore = goodPosts.length > 0 ? Math.round(totalScore / goodPosts.length) : 0;
+    const totalComments = goodPosts.reduce((sum, p) => sum + p.numComments, 0);
+    
+    container.style.display = 'grid';
+    container.innerHTML = `
+        <div class="stat-card">
+            <div class="stat-value">${goodPosts.length}</div>
+            <div class="stat-label">Active Posts</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${filteredPosts.length}</div>
+            <div class="stat-label">Removed Posts</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${totalScore.toLocaleString()}</div>
+            <div class="stat-label">Total Upvotes</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${avgScore.toLocaleString()}</div>
+            <div class="stat-label">Avg Upvotes</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${totalComments.toLocaleString()}</div>
+            <div class="stat-label">Total Comments</div>
+        </div>
+    `;
+}
+
+async function renderPost(post, container, cache) {
+    const div = document.createElement('div');
+    div.className = 'post';
+    div.dataset.subreddit = post.subreddit;
+    div.dataset.dateRaw = post.dateRaw;
+    div.dataset.score = post.score;
+    
+    div.innerHTML = `
+        <div class="main-line" onclick="this.parentElement.querySelector('.dropdown').classList.toggle('open')">
+            <div>
+                <a href="${post.url}" target="_blank" class="title-link" onclick="event.stopPropagation()">${post.title}</a>
+                <div class="meta">/r/${post.subreddit} — ${post.date} — ${post.score.toLocaleString()} upvotes • ${post.numComments} comments</div>
+            </div>
+            <div class="actions-group">
+                <div class="need" id="need-${post.subreddit}-${post.dateRaw}">Calculating…</div>
+                <button class="copy-btn">Copy link</button>
+            </div>
+        </div>
+        <div class="dropdown">
+            <strong>Current realistic top 5 in /r/${post.subreddit}:</strong><br>
+            <div id="top-${post.subreddit}-${post.dateRaw}">Loading…</div>
+        </div>
+    `;
+    
+    div.querySelector('.copy-btn').onclick = (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(post.url);
+        const b = e.target;
+        b.textContent = 'Copied!';
+        b.classList.add('copied');
+        setTimeout(() => { b.textContent = 'Copy link'; b.classList.remove('copied'); }, 2000);
+    };
+    
+    container.appendChild(div);
+    
+    if (!cache.has(post.subreddit)) {
+        cache.set(post.subreddit, getSmartNeed(post.subreddit, post.score));
+    }
+    
+    const result = await cache.get(post.subreddit);
+    document.getElementById(`top-${post.subreddit}-${post.dateRaw}`).innerHTML = result.topHTML;
+    const needEl = document.getElementById(`need-${post.subreddit}-${post.dateRaw}`);
+    needEl.innerHTML = result.needHTML;
+    
+    // Store target in dataset
+    div.dataset.target = result.neededForCopy || 0;
+    
+    if (result.neededForCopy !== undefined) {
+        allNeededNumbers.push(result.neededForCopy);
+    }
+    
+    if (!result.needHTML.includes("already #1")) {
+        needEl.onclick = (e) => {
+            e.stopPropagation();
+            if (result.neededForCopy !== undefined && result.neededForCopy > 0) {
+                navigator.clipboard.writeText(result.neededForCopy.toString());
+                const orig = needEl.innerHTML;
+                needEl.innerHTML = result.neededForCopy.toLocaleString();
+                needEl.style.background = '#28a745';
+                setTimeout(() => {
+                    needEl.innerHTML = orig;
+                    needEl.style.background = '';
+                }, 1500);
+            }
+        };
+    }
+}
+
+function renderFilteredPosts(filteredPosts, container) {
+    const section = document.createElement('div');
+    section.className = 'filtered-section';
+    section.innerHTML = `<h3>Filtered / Removed posts (${filteredPosts.length})</h3>`;
+    container.appendChild(section);
+    
+    for (const post of filteredPosts) {
+        const div = document.createElement('div');
+        div.className = 'post';
+        div.innerHTML = `
+            <div class="main-line">
+                <div>
+                    <a href="${post.url}" target="_blank" class="title-link" onclick="event.stopPropagation()">${post.title}</a>
+                    <div class="meta">/r/${post.subreddit} — ${post.date} — ${post.score.toLocaleString()} upvotes</div>
+                </div>
+                <div class="actions-group">
+                    <div class="removed">${post.removalReason || "Removed"}</div>
+                    <button class="copy-btn">Copy link</button>
+                </div>
+            </div>
+        `;
+        
+        div.querySelector('.copy-btn').onclick = (e) => {
+            e.stopPropagation();
+            navigator.clipboard.writeText(post.url);
+            const b = e.target;
+            b.textContent = 'Copied!';
+            b.classList.add('copied');
+            setTimeout(() => { b.textContent = 'Copy link'; b.classList.remove('copied'); }, 2000);
+        };
+        
+        container.appendChild(div);
+    }
+}
+
+// Sorting and filtering
+function applySortFilter() {
+    currentSort = document.getElementById('sortSelect').value;
+    const container = document.getElementById('posts');
+    const posts = Array.from(container.querySelectorAll('.post:not(.filtered-section .post)'));
+    
+    posts.sort((a, b) => {
+        switch(currentSort) {
+            case 'date-desc':
+                return parseFloat(b.dataset.dateRaw) - parseFloat(a.dataset.dateRaw);
+            case 'date-asc':
+                return parseFloat(a.dataset.dateRaw) - parseFloat(b.dataset.dateRaw);
+            case 'score-desc':
+                return parseFloat(b.dataset.score) - parseFloat(a.dataset.score);
+            case 'score-asc':
+                return parseFloat(a.dataset.score) - parseFloat(b.dataset.score);
+            case 'target-desc':
+                return parseFloat(b.dataset.target || 0) - parseFloat(a.dataset.target || 0);
+            case 'target-asc':
+                return parseFloat(a.dataset.target || 0) - parseFloat(b.dataset.target || 0);
+            default:
+                return 0;
+        }
+    });
+    
+    // Remove and re-append in sorted order
+    const filteredSection = container.querySelector('.filtered-section');
+    posts.forEach(post => container.insertBefore(post, filteredSection));
+}
+
+function applySubredditFilter() {
+    const filter = document.getElementById('subredditFilter').value;
+    const posts = document.querySelectorAll('.post:not(.filtered-section .post)');
+    
+    posts.forEach(post => {
+        if (filter === 'all' || post.dataset.subreddit === filter) {
+            post.style.display = '';
+        } else {
+            post.style.display = 'none';
+        }
+    });
+}
+
+// Copy functions
+function copyAllUpvotes() {
+    if (allNeededNumbers.length === 0) return;
+    const text = allNeededNumbers.join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copyAllBtn');
+        const old = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.background = '#218838';
+        setTimeout(() => { btn.textContent = old; btn.style.background = ''; }, 2000);
+    });
+}
+
+function copyAllLinks() {
+    const links = [];
+    document.querySelectorAll('#posts .post:not(.filtered-section .post) .title-link').forEach(a => {
+        if (a.href) links.push(a.href);
+    });
+    if (links.length === 0) return;
+    navigator.clipboard.writeText(links.join('\n')).then(() => {
+        const btn = document.getElementById('copyLinksBtn');
+        const old = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.background = '#218838';
+        setTimeout(() => { btn.textContent = old; btn.style.background = ''; }, 2000);
+    });
+}
+
+function exportToCSV() {
+    if (allUserPosts.length === 0) return;
+    
+    let csv = 'Title,Subreddit,Score,Comments,Date,URL,Target Upvotes\n';
+    
+    const posts = document.querySelectorAll('#posts .post:not(.filtered-section .post)');
+    posts.forEach(post => {
+        const title = post.querySelector('.title-link').textContent.replace(/"/g, '""');
+        const subreddit = post.dataset.subreddit;
+        const score = post.dataset.score;
+        const meta = post.querySelector('.meta').textContent;
+        const comments = meta.match(/(\d+) comments/)?.[1] || '0';
+        const date = meta.match(/— (.*?) —/)?.[1] || '';
+        const url = post.querySelector('.title-link').href;
+        const target = post.dataset.target || '0';
+        
+        csv += `"${title}","${subreddit}","${score}","${comments}","${date}","${url}","${target}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reddit-analysis-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// SHORTLINK CALCULATOR FUNCTIONS
+function extractSubreddit(url) {
+    const match = url.match(/reddit\.com\/r\/([^\/]+)\/(comments|s)\//i);
+    if (match) return match[1];
+    return null;
+}
+
+async function loadShortlinks() {
+    const input = document.getElementById('links').value.trim();
+    if (!input) return alert("Paste at least one link");
+    
+    const urls = input.split('\n').map(l => l.trim()).filter(Boolean);
+    const status = document.getElementById('statusShortlink');
+    const container = document.getElementById('postsShortlink');
+    const loadBtn = document.getElementById('loadShortlinkBtn');
+    
+    container.innerHTML = '';
+    allShortlinkTargets.length = 0;
+    
+    document.getElementById('copyAllTargetsBtn').style.display = 'none';
+    document.getElementById('copyShortlinksBtn').style.display = 'none';
+    
+    loadBtn.disabled = true;
+    status.textContent = `Processing ${urls.length} link(s)…`;
+    
+    const cache = new Map();
+    let loaded = 0;
+
+    for (let i = 0; i < urls.length; i++) {
+        const originalUrl = urls[i];
+        status.textContent = `Processing ${i+1}/${urls.length}…`;
+        const subreddit = extractSubreddit(originalUrl);
+
+        if (!subreddit) {
+            container.innerHTML += `
+                <div class="post">
+                    <div class="main-line">
+                        <div><strong>❌ No subreddit found</strong>
+                        <div class="meta"><a href="${originalUrl}" target="_blank">${originalUrl}</a></div>
+                        </div>
+                    </div>
+                </div>`;
+            continue;
+        }
+
+        const uniqueKey = `sub-${subreddit}-${i}`;
+
+        const div = document.createElement('div');
+        div.className = 'post';
+        div.innerHTML = `
+            <div class="main-line" onclick="this.parentElement.querySelector('.dropdown').classList.toggle('open')">
+                <div style="flex:1;">
+                    <span class="title-link">/r/${subreddit} short link</span>
+                    <div class="meta">Your original link</div>
+                    <div class="full-url">Short link: <a href="${originalUrl}" target="_blank" onclick="event.stopPropagation()">${originalUrl}</a></div>
+                </div>
+                <div class="actions-group">
+                    <div class="need" id="need-${uniqueKey}">Calculating…</div>
+                    <button class="copy-btn">Copy short link</button>
+                </div>
+            </div>
+            <div class="dropdown">
+                <strong>Top 5 hot posts in /r/${subreddit}:</strong><br>
+                <div id="top-${uniqueKey}">Loading…</div>
+            </div>
+        `;
+
+        div.querySelector('.copy-btn').onclick = e => {
+            e.stopPropagation();
+            navigator.clipboard.writeText(originalUrl);
+            const b = e.target;
+            b.textContent = 'Copied!';
+            b.classList.add('copied');
+            setTimeout(() => { b.textContent = 'Copy short link'; b.classList.remove('copied'); }, 2000);
+        };
+
+        container.appendChild(div);
+        loaded++;
+
+        if (!cache.has(subreddit)) {
+            cache.set(subreddit, getSmartNeedShortlink(subreddit));
+        }
+        
+        const result = await cache.get(subreddit);
+
+        document.getElementById(`top-${uniqueKey}`).innerHTML = result.topHTML;
+        const needEl = document.getElementById(`need-${uniqueKey}`);
+        needEl.innerHTML = result.needHTML;
+        if (result.error) needEl.classList.add('error');
+
+        if (result.neededForCopy !== undefined) {
+            allShortlinkTargets.push(result.neededForCopy);
+            if (result.neededForCopy > 0) {
+                needEl.onclick = (e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(`${result.neededForCopy}`);
+                    const orig = needEl.innerHTML;
+                    needEl.innerHTML = 'Copied!';
+                    needEl.style.background = '#28a745';
+                    setTimeout(() => { needEl.innerHTML = orig; needEl.style.background = ''; }, 1500);
+                };
+            }
+        }
+
+        await new Promise(r => setTimeout(r, 1000));
+    }
+
+    if (allShortlinkTargets.length > 0) {
+        document.getElementById('copyAllTargetsBtn').style.display = 'inline-block';
+        document.getElementById('copyShortlinksBtn').style.display = 'inline-block';
+    }
+
+    status.textContent = `Done — ${loaded} link(s) processed`;
+    loadBtn.disabled = false;
+}
+
+function copyAllTargets() {
+    if (allShortlinkTargets.length === 0) return;
+    const text = allShortlinkTargets.join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copyAllTargetsBtn');
+        const old = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.background = '#218838';
+        setTimeout(() => { btn.textContent = old; btn.style.background = ''; }, 2000);
+    });
+}
+
+function copyAllShortlinks() {
+    const links = [];
+    document.querySelectorAll('#postsShortlink .full-url a').forEach(a => {
+        if (a.href) links.push(a.href);
+    });
+    if (links.length === 0) return;
+    navigator.clipboard.writeText(links.join('\n')).then(() => {
+        const btn = document.getElementById('copyShortlinksBtn');
+        const old = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.background = '#218838';
+        setTimeout(() => { btn.textContent = old; btn.style.background = ''; }, 2000);
+    });
+}
+
+// Smart upvote calculation
+async function getSmartNeed(subreddit, userScore) {
+    try {
+        const redditUrl = `https://old.reddit.com/r/${subreddit}/hot/.json?limit=25&t=${Date.now()}`;
+        const data = await fetchWithProxy(redditUrl);
+        
+        let hotPosts = data.data.children
+            .filter(child => !child.data.stickied)
+            .map(child => child.data);
+            
+        if (hotPosts.length === 0) {
+            return { topHTML: "<em>Only pinned</em>", needHTML: "N/A" };
+        }
+        
+        const now = Date.now() / 1000;
+        let targetPost = null;
+        
+        for (const post of hotPosts) {
+            const ageSeconds = now - post.created_utc;
+            const isTooHot = post.score > 200 && ageSeconds < (20 * 3600);
+            if (!isTooHot) {
+                targetPost = post;
+                break;
+            }
+        }
+        
+        if (!targetPost) targetPost = hotPosts[0];
+        
+        let needed = targetPost.score - userScore + 1;
+        
+        if (needed <= 0) {
+            return {
+                topHTML: makeTopList(hotPosts.slice(0, 5)),
+                needHTML: "<strong>You are already #1!</strong>",
+                neededForCopy: 0
+            };
+        }
+        
+        needed = Math.max(10, Math.ceil(needed / 5) * 5);
+        
+        return {
+            topHTML: makeTopList(hotPosts.slice(0, 5)),
+            needHTML: `<strong>${needed.toLocaleString()} upvotes → Slowest</strong>`,
+            neededForCopy: needed
+        };
+    } catch (e) {
+        console.error('getSmartNeed error:', e);
+        return { topHTML: "<em>Failed to load</em>", needHTML: "Error" };
+    }
+}
+
+async function getSmartNeedShortlink(subreddit) {
+    const proxies = [
+        'https://corsproxy.io/?',
+        'https://api.codetabs.com/v1/proxy?quest=',
+        'https://cors.x2u.in/'
+    ];
+
+    const baseUrls = [
+        `https://www.reddit.com/r/${subreddit}/hot/.json?limit=25&raw_json=1`,
+        `https://old.reddit.com/r/${subreddit}/hot/.json?limit=25`
+    ];
+
+    for (const proxy of proxies) {
+        for (const base of baseUrls) {
+            try {
+                const url = proxy + encodeURIComponent(base);
+                const res = await fetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    return processHotData(data);
+                }
+            } catch (e) {}
+        }
+    }
+
+    return {
+        topHTML: "<em>Failed — try again later</em>",
+        needHTML: "Error",
+        error: true
+    };
+}
+
+function processHotData(data) {
+    let hotPosts = data.data.children
+        .filter(c => !c.data.stickied && c.kind === 't3')
+        .map(c => c.data);
+
+    if (hotPosts.length === 0) {
+        return { topHTML: "<em>No visible posts</em>", needHTML: "N/A" };
+    }
+
+    const now = Date.now() / 1000;
+    const TWENTY_HOURS = 20 * 60 * 60;
+    let targetPost = null;
+
+    for (const post of hotPosts) {
+        const age = now - post.created_utc;
+        const isExploding = post.score > 200 && age < TWENTY_HOURS;
+        if (!isExploding) {
+            targetPost = post;
+            break;
+        }
+    }
+    
+    if (!targetPost) targetPost = hotPosts[0];
+
+    let needed = targetPost.score + 1;
+    const top5 = hotPosts.slice(0, 5);
+
+    if (needed <= 10) {
+        return {
+            topHTML: makeTopList(top5),
+            needHTML: "<strong>10 upvotes</strong>",
+            neededForCopy: 10
+        };
+    }
+
+    needed = Math.max(10, Math.ceil(needed / 5) * 5);
+
+    return {
+        topHTML: makeTopList(top5),
+        needHTML: `<strong>${needed.toLocaleString()} upvotes</strong>`,
+        neededForCopy: needed
+    };
+}
+
+function makeTopList(posts) {
+    let list = '<ol class="top-list">';
+    posts.forEach(p => {
+        const age = timeAgo(p.created_utc);
+        const hotTag = (p.score > 200 && (Date.now()/1000 - p.created_utc) < 20*3600) ? " (exploding)" : "";
+        list += `<li><a href="https://www.reddit.com${p.permalink}" target="_blank" onclick="event.stopPropagation()">${p.title}</a>
+                 <span class="age"> — ${p.score.toLocaleString()} upvotes • ${age}${hotTag}</span></li>`;
+    });
+    list += '</ol>';
+    return list;
+}
+
+function timeAgo(ts) {
+    const diff = (Date.now()/1000) - ts;
+    if (diff < 3600) return `${Math.floor(diff/60)} min`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h`;
+    return `${Math.floor(diff/86400)}d`;
+}
+
+// Keyboard shortcuts
+document.getElementById('username').addEventListener('keypress', e => {
+    if (e.key === 'Enter') loadUserPosts();
+});
+
+document.getElementById('links').addEventListener('keypress', e => {
+    if (e.key === 'Enter' && e.ctrlKey) loadShortlinks();
+});
+</script>
+</body>
+</html>
