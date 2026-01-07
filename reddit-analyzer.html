@@ -611,6 +611,7 @@
     <div class="tab-nav">
         <button class="tab-btn active" onclick="switchTab('username')">👤 Username Analysis</button>
         <button class="tab-btn" onclick="switchTab('shortlink')">🔗 Shortlink Calculator</button>
+        <button class="tab-btn" onclick="switchTab('upvote')">📈 Upvote Checker</button>
     </div>
     
     <!-- Username Analysis Tab -->
@@ -681,6 +682,36 @@ Works with full links too!"></textarea>
         <div class="posts" id="postsShortlink"></div>
     </div>
     
+    <!-- Upvote Checker Tab -->
+    <div id="upvote-tab" class="tab-content">
+        <div class="search-card">
+            <textarea id="upvoteLinks" placeholder="Paste Reddit post links (one per line)
+
+Examples:
+https://www.reddit.com/r/funny/comments/abc123/my_post/
+https://reddit.com/r/pics/comments/def456/another_post/
+https://www.reddit.com/r/gaming/s/shortlink123
+
+Works with full links and shortlinks!" style="min-height: 150px;"></textarea>
+            <div class="action-buttons" style="margin-top: 15px;">
+                <button class="load" onclick="checkUpvotes()" id="checkUpvotesBtn">Check Upvotes</button>
+                <button class="copyall" id="copyAllUpvotesBtn" onclick="copyAllUpvotes()">Copy All Upvotes</button>
+                <button class="copyall" id="copyAllStatusBtn" onclick="copyAllStatus()">Copy All Status</button>
+                <button class="copyall" id="copyAliveBtn" onclick="copyAliveUpvotes()">Copy Alive</button>
+                <button class="copyall" id="copyFilteredBtn" onclick="copyFilteredUpvotes()">Copy Filtered</button>
+                <button class="copyall" id="copyUpvoteDataBtn" onclick="copyUpvoteData()">Copy Report</button>
+                <button class="copyall" id="exportUpvotesBtn" onclick="exportUpvotesToCSV()">Export CSV</button>
+            </div>
+        </div>
+        
+        <div class="info">
+            <span id="statusUpvote">Enter post links to check current upvotes</span>
+            <span id="statsUpvote"></span>
+        </div>
+        
+        <div class="posts" id="postsUpvote"></div>
+    </div>
+    
     <div class="footer">
         Click any post to show/hide details • 100% client-side • Always safe & natural<br>
         Powered by corsproxy.io (2025 working proxy) • No login required
@@ -703,9 +734,12 @@ function switchTab(tab) {
     if (tab === 'username') {
         document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
         document.getElementById('username-tab').classList.add('active');
-    } else {
+    } else if (tab === 'shortlink') {
         document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
         document.getElementById('shortlink-tab').classList.add('active');
+    } else if (tab === 'upvote') {
+        document.querySelector('.tab-btn:nth-child(3)').classList.add('active');
+        document.getElementById('upvote-tab').classList.add('active');
     }
 }
 
@@ -1377,6 +1411,578 @@ document.getElementById('username').addEventListener('keypress', e => {
 document.getElementById('links').addEventListener('keypress', e => {
     if (e.key === 'Enter' && e.ctrlKey) loadShortlinks();
 });
+
+// ==================== UPVOTE CHECKER FUNCTIONS ====================
+let upvoteResults = [];
+
+function extractPostId(url) {
+    // Extract post ID from various Reddit URL formats
+    // Full link: https://www.reddit.com/r/subreddit/comments/abc123/title/
+    // Shortlink: https://www.reddit.com/r/subreddit/s/xyz789
+    
+    // Try to match comments format first
+    let match = url.match(/\/comments\/([a-z0-9]+)/i);
+    if (match) return match[1];
+    
+    // Try to match shortlink format - extract subreddit and short ID
+    match = url.match(/\/r\/([^\/]+)\/s\/([a-z0-9]+)/i);
+    if (match) {
+        return { 
+            type: 'shortlink', 
+            subreddit: match[1],
+            shortId: match[2],
+            url: url 
+        };
+    }
+    
+    return null;
+}
+
+async function getPostUpvotes(postId, originalUrl) {
+    try {
+        let jsonUrl;
+        let actualPostId = postId;
+        
+        if (typeof postId === 'object' && postId.type === 'shortlink') {
+            // For shortlinks, we need to resolve them properly
+            // Try multiple methods to resolve the shortlink
+            
+            // Method 1: Try fetching the shortlink JSON directly
+            try {
+                const shortJsonUrl = `https://www.reddit.com/r/${postId.subreddit}/s/${postId.shortId}.json?raw_json=1`;
+                const shortResponse = await fetch(PROXY + encodeURIComponent(shortJsonUrl));
+                const shortData = await shortResponse.json();
+                
+                if (shortData && shortData[0] && shortData[0].data && shortData[0].data.children && shortData[0].data.children[0]) {
+                    const post = shortData[0].data.children[0].data;
+                    const removalStatus = checkRemovalStatus(post);
+                    
+                    return {
+                        success: true,
+                        title: post.title,
+                        subreddit: post.subreddit,
+                        author: post.author,
+                        upvotes: post.score || 0,
+                        upvoteRatio: post.upvote_ratio ? (post.upvote_ratio * 100).toFixed(1) + '%' : 'N/A',
+                        comments: post.num_comments || 0,
+                        created: new Date(post.created_utc * 1000).toLocaleString(),
+                        url: originalUrl,
+                        permalink: `https://www.reddit.com${post.permalink}`,
+                        isNSFW: post.over_18 || false,
+                        flair: post.link_flair_text || 'None',
+                        awards: post.total_awards_received || 0,
+                        isRemoved: removalStatus.isRemoved,
+                        removalReason: removalStatus.reason,
+                        removedBy: removalStatus.removedBy
+                    };
+                }
+            } catch (e) {
+                console.log('Shortlink JSON method failed, trying alternate methods');
+            }
+            
+            // Method 2: Try to get the full URL by fetching HTML
+            try {
+                const htmlResponse = await fetch(PROXY + encodeURIComponent(postId.url));
+                const html = await htmlResponse.text();
+                
+                // Try to extract the post ID from canonical URL
+                const canonicalMatch = html.match(/canonical"\s+href="https:\/\/www\.reddit\.com\/r\/[^\/]+\/comments\/([a-z0-9]+)/i);
+                if (canonicalMatch) {
+                    actualPostId = canonicalMatch[1];
+                    jsonUrl = `https://www.reddit.com/comments/${actualPostId}.json`;
+                } else {
+                    // Try to extract from alternate patterns
+                    const altMatch = html.match(/\/comments\/([a-z0-9]+)/i);
+                    if (altMatch) {
+                        actualPostId = altMatch[1];
+                        jsonUrl = `https://www.reddit.com/comments/${actualPostId}.json`;
+                    } else {
+                        throw new Error('Could not resolve shortlink - try using the full post URL');
+                    }
+                }
+            } catch (e) {
+                throw new Error('Could not resolve shortlink - try using the full post URL');
+            }
+        } else {
+            jsonUrl = `https://www.reddit.com/comments/${actualPostId}.json`;
+        }
+        
+        // Add cache buster to get fresh data
+        const cacheBuster = `?t=${Date.now()}&raw_json=1`;
+        const response = await fetch(PROXY + encodeURIComponent(jsonUrl + cacheBuster));
+        const data = await response.json();
+        
+        if (data && data[0] && data[0].data && data[0].data.children && data[0].data.children[0]) {
+            const post = data[0].data.children[0].data;
+            
+            // Check for removal
+            const removalStatus = checkRemovalStatus(post);
+            
+            // Use score as it's the most accurate representation of upvotes
+            const upvotes = post.score || post.ups || 0;
+            
+            return {
+                success: true,
+                title: post.title,
+                subreddit: post.subreddit,
+                author: post.author,
+                upvotes: upvotes,
+                upvoteRatio: post.upvote_ratio ? (post.upvote_ratio * 100).toFixed(1) + '%' : 'N/A',
+                comments: post.num_comments || 0,
+                created: new Date(post.created_utc * 1000).toLocaleString(),
+                url: originalUrl,
+                permalink: `https://www.reddit.com${post.permalink}`,
+                isNSFW: post.over_18 || false,
+                flair: post.link_flair_text || 'None',
+                awards: post.total_awards_received || 0,
+                isRemoved: removalStatus.isRemoved,
+                removalReason: removalStatus.reason,
+                removedBy: removalStatus.removedBy
+            };
+        } else {
+            throw new Error('Invalid response structure');
+        }
+    } catch (error) {
+        console.error('Error fetching upvotes:', error);
+        return {
+            success: false,
+            error: error.message,
+            url: originalUrl
+        };
+    }
+}
+
+function checkRemovalStatus(post) {
+    // Check multiple indicators of post removal
+    const result = {
+        isRemoved: false,
+        reason: null,
+        removedBy: null // 'mod', 'reddit', 'user', or 'other'
+    };
+    
+    // Check if author is deleted
+    if (post.author === "[deleted]") {
+        result.isRemoved = true;
+        result.reason = "Deleted by user";
+        result.removedBy = 'user';
+        return result;
+    }
+    
+    // Check if content is removed
+    if (post.selftext === "[removed]" || post.selftext === "[deleted]") {
+        result.isRemoved = true;
+        result.reason = "Content removed";
+        result.removedBy = 'other';
+        return result;
+    }
+    
+    // Check removed_by_category (most reliable indicator)
+    if (post.removed_by_category) {
+        result.isRemoved = true;
+        if (post.removed_by_category === "moderator") {
+            result.reason = "Removed by moderator";
+            result.removedBy = 'mod';
+        } else if (post.removed_by_category === "reddit") {
+            result.reason = "Removed by Reddit (spam filter)";
+            result.removedBy = 'reddit';
+        } else if (post.removed_by_category === "automod_filtered") {
+            result.reason = "Filtered by AutoModerator";
+            result.removedBy = 'reddit';
+        } else if (post.removed_by_category === "anti_evil_ops") {
+            result.reason = "Removed by Reddit Admin";
+            result.removedBy = 'reddit';
+        } else if (post.removed_by_category === "copyright_takedown") {
+            result.reason = "Copyright takedown";
+            result.removedBy = 'reddit';
+        } else {
+            result.reason = `Removed (${post.removed_by_category})`;
+            result.removedBy = 'other';
+        }
+        return result;
+    }
+    
+    // Check banned_by or spam flags
+    if (post.banned_by || post.spam) {
+        result.isRemoved = true;
+        result.reason = post.spam ? "Marked as spam" : "Removed by moderator";
+        result.removedBy = post.spam ? 'reddit' : 'mod';
+        return result;
+    }
+    
+    // Check if post is not indexable by search engines (often means shadow removed)
+    if (post.is_robot_indexable === false) {
+        result.isRemoved = true;
+        result.reason = "Hidden/Shadow removed";
+        result.removedBy = 'reddit';
+        return result;
+    }
+    
+    // Check removal_reason
+    if (post.removal_reason) {
+        result.isRemoved = true;
+        result.reason = `Removed: ${post.removal_reason}`;
+        result.removedBy = 'mod';
+        return result;
+    }
+    
+    // Check if quarantined
+    if (post.quarantined) {
+        result.isRemoved = true;
+        result.reason = "Quarantined";
+        result.removedBy = 'reddit';
+        return result;
+    }
+    
+    return result;
+}
+
+async function checkUpvotes() {
+    const input = document.getElementById('upvoteLinks').value.trim();
+    if (!input) return alert('Paste at least one Reddit link');
+    
+    const urls = input.split('\n').map(l => l.trim()).filter(Boolean);
+    const status = document.getElementById('statusUpvote');
+    const container = document.getElementById('postsUpvote');
+    const checkBtn = document.getElementById('checkUpvotesBtn');
+    
+    container.innerHTML = '';
+    upvoteResults = [];
+    
+    document.getElementById('copyAllUpvotesBtn').style.display = 'none';
+    document.getElementById('copyAllStatusBtn').style.display = 'none';
+    document.getElementById('copyAliveBtn').style.display = 'none';
+    document.getElementById('copyFilteredBtn').style.display = 'none';
+    document.getElementById('copyUpvoteDataBtn').style.display = 'none';
+    document.getElementById('exportUpvotesBtn').style.display = 'none';
+    
+    checkBtn.disabled = true;
+    checkBtn.textContent = 'Checking...';
+    status.textContent = `Processing ${urls.length} link(s)...`;
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (let i = 0; i < urls.length; i++) {
+        const url = urls[i];
+        status.textContent = `Processing ${i + 1}/${urls.length}...`;
+        
+        const postId = extractPostId(url);
+        
+        if (!postId) {
+            const div = document.createElement('div');
+            div.className = 'post';
+            div.innerHTML = `
+                <div class="main-line">
+                    <div><strong>❌ Invalid URL</strong>
+                    <div class="meta">${url}</div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+            failCount++;
+            continue;
+        }
+        
+        const result = await getPostUpvotes(postId, url);
+        
+        if (result.success) {
+            upvoteResults.push(result);
+            successCount++;
+            
+            const div = document.createElement('div');
+            div.className = 'post';
+            
+            // Determine status badge and display
+            let statusBadge = '';
+            let statusText = '';
+            let statusColor = '';
+            
+            if (result.isRemoved) {
+                if (result.removedBy === 'mod') {
+                    statusText = '⚠️ REMOVED BY MODS';
+                    statusColor = '#dc2626';
+                    statusBadge = `<div class="removed" style="margin-left: 10px; background: linear-gradient(135deg, #9333ea, #7e22ce);">Removed by Mods</div>`;
+                } else {
+                    statusText = '⚠️ FILTERED';
+                    statusColor = '#dc2626';
+                    statusBadge = `<div class="removed" style="margin-left: 10px;">${result.removalReason}</div>`;
+                }
+            } else {
+                statusText = '✓ Alive';
+                statusColor = '#10b981';
+            }
+            
+            div.innerHTML = `
+                <div class="main-line" onclick="this.parentElement.querySelector('.dropdown').classList.toggle('open')">
+                    <div style="flex: 1;">
+                        <a href="${result.permalink}" target="_blank" class="title-link" onclick="event.stopPropagation()">${result.title}</a>
+                        <div class="meta">
+                            /r/${result.subreddit} • u/${result.author} • ${result.created}
+                            ${result.isNSFW ? ' • <span style="color: #ff6b6b;">NSFW</span>' : ''}
+                            • <span style="color: ${statusColor}; font-weight: 700;">${statusText}</span>
+                        </div>
+                    </div>
+                    <div class="actions-group">
+                        <div class="need" style="background: ${result.isRemoved ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : 'linear-gradient(135deg, #10b981, #059669)'};">
+                            📈 ${result.upvotes.toLocaleString()} upvotes
+                        </div>
+                        ${statusBadge}
+                        <button class="copy-btn" onclick="event.stopPropagation(); copyToClipboard('${result.upvotes}')">Copy Count</button>
+                    </div>
+                </div>
+                <div class="dropdown">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 10px;">
+                        <div>
+                            <strong>Upvotes:</strong> ${result.upvotes.toLocaleString()}<br>
+                            <strong>Ratio:</strong> ${result.upvoteRatio}<br>
+                            <strong>Comments:</strong> ${result.comments.toLocaleString()}
+                        </div>
+                        <div>
+                            <strong>Flair:</strong> ${result.flair}<br>
+                            <strong>Awards:</strong> ${result.awards}<br>
+                            <strong>NSFW:</strong> ${result.isNSFW ? 'Yes' : 'No'}
+                        </div>
+                        <div>
+                            <strong>Status:</strong> <span style="color: ${statusColor}; font-weight: 700;">${result.isRemoved ? (result.removedBy === 'mod' ? 'REMOVED BY MODS' : 'FILTERED') : 'Alive'}</span><br>
+                            ${result.isRemoved ? `<strong>Reason:</strong> ${result.removalReason}<br>` : ''}
+                            <strong>Author:</strong> u/${result.author}
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <strong>Original Link:</strong><br>
+                        <a href="${result.url}" target="_blank" onclick="event.stopPropagation()" style="color: #93c5fd; word-break: break-all;">${result.url}</a>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        } else {
+            failCount++;
+            const div = document.createElement('div');
+            div.className = 'post';
+            div.innerHTML = `
+                <div class="main-line">
+                    <div><strong>❌ Failed to fetch</strong>
+                    <div class="meta">${url}</div>
+                    <div class="meta" style="color: #ff6b6b; margin-top: 5px;">Error: ${result.error}</div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+        
+        // Rate limiting
+        await new Promise(r => setTimeout(r, 1000));
+    }
+    
+    if (upvoteResults.length > 0) {
+        document.getElementById('copyAllUpvotesBtn').style.display = 'inline-block';
+        document.getElementById('copyAllStatusBtn').style.display = 'inline-block';
+        document.getElementById('copyAliveBtn').style.display = 'inline-block';
+        document.getElementById('copyFilteredBtn').style.display = 'inline-block';
+        document.getElementById('copyUpvoteDataBtn').style.display = 'inline-block';
+        document.getElementById('exportUpvotesBtn').style.display = 'inline-block';
+    }
+    
+    const removedCount = upvoteResults.filter(r => r.isRemoved).length;
+    const activeCount = upvoteResults.length - removedCount;
+    
+    status.textContent = `Complete — ${successCount} successful, ${failCount} failed • ${activeCount} alive, ${removedCount} filtered`;
+    document.getElementById('statsUpvote').textContent = `Total upvotes: ${upvoteResults.reduce((sum, r) => sum + r.upvotes, 0).toLocaleString()}`;
+    
+    checkBtn.disabled = false;
+    checkBtn.textContent = 'Check Upvotes';
+}
+
+function copyAllUpvotes() {
+    if (upvoteResults.length === 0) return;
+    
+    // Copy just the upvote numbers, one per line
+    const upvotes = upvoteResults.map(r => r.upvotes).join('\n');
+    
+    navigator.clipboard.writeText(upvotes).then(() => {
+        const btn = document.getElementById('copyAllUpvotesBtn');
+        const old = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.background = '#218838';
+        setTimeout(() => {
+            btn.textContent = old;
+            btn.style.background = '';
+        }, 2000);
+    });
+}
+
+function copyAllStatus() {
+    if (upvoteResults.length === 0) return;
+    
+    // Copy status for ALL posts in order
+    // Alive = not removed
+    // Filtered = removed by Reddit/spam filter
+    // Removed by Mods = removed by moderator
+    const statusLabels = upvoteResults.map(r => {
+        if (!r.isRemoved) {
+            return 'Alive';
+        } else if (r.removedBy === 'mod') {
+            return 'Removed by Mods';
+        } else {
+            return 'Filtered';
+        }
+    }).join('\n');
+    
+    navigator.clipboard.writeText(statusLabels).then(() => {
+        const btn = document.getElementById('copyAllStatusBtn');
+        const old = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.background = '#218838';
+        setTimeout(() => {
+            btn.textContent = old;
+            btn.style.background = '';
+        }, 2000);
+    });
+}
+
+function copyAliveUpvotes() {
+    if (upvoteResults.length === 0) return;
+    
+    // Copy only upvotes from posts that are NOT removed (alive/active)
+    const aliveUpvotes = upvoteResults
+        .filter(r => !r.isRemoved)
+        .map(r => r.upvotes)
+        .join('\n');
+    
+    if (!aliveUpvotes) {
+        alert('No alive posts found!');
+        return;
+    }
+    
+    navigator.clipboard.writeText(aliveUpvotes).then(() => {
+        const btn = document.getElementById('copyAliveBtn');
+        const old = btn.textContent;
+        const count = upvoteResults.filter(r => !r.isRemoved).length;
+        btn.textContent = `Copied ${count}!`;
+        btn.style.background = '#218838';
+        setTimeout(() => {
+            btn.textContent = old;
+            btn.style.background = '';
+        }, 2000);
+    });
+}
+
+function copyFilteredUpvotes() {
+    if (upvoteResults.length === 0) return;
+    
+    // Copy only upvotes from posts that ARE removed (filtered)
+    const filteredUpvotes = upvoteResults
+        .filter(r => r.isRemoved)
+        .map(r => r.upvotes)
+        .join('\n');
+    
+    if (!filteredUpvotes) {
+        alert('No filtered posts found!');
+        return;
+    }
+    
+    navigator.clipboard.writeText(filteredUpvotes).then(() => {
+        const btn = document.getElementById('copyFilteredBtn');
+        const old = btn.textContent;
+        const count = upvoteResults.filter(r => r.isRemoved).length;
+        btn.textContent = `Copied ${count}!`;
+        btn.style.background = '#218838';
+        setTimeout(() => {
+            btn.textContent = old;
+            btn.style.background = '';
+        }, 2000);
+    });
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text);
+    // Show brief feedback
+    event.target.textContent = 'Copied!';
+    setTimeout(() => {
+        event.target.textContent = 'Copy Count';
+    }, 1500);
+}
+
+function copyUpvoteData() {
+    if (upvoteResults.length === 0) return;
+    
+    let text = 'Reddit Post Upvote Report\n';
+    text += '='.repeat(50) + '\n\n';
+    
+    upvoteResults.forEach((result, index) => {
+        let status;
+        if (!result.isRemoved) {
+            status = '✓ Alive';
+        } else if (result.removedBy === 'mod') {
+            status = '⚠️ Removed by Mods';
+        } else {
+            status = '⚠️ Filtered';
+        }
+        
+        text += `${index + 1}. ${result.title}\n`;
+        text += `   Subreddit: /r/${result.subreddit}\n`;
+        text += `   Author: u/${result.author}\n`;
+        text += `   Upvotes: ${result.upvotes.toLocaleString()}\n`;
+        text += `   Ratio: ${result.upvoteRatio}\n`;
+        text += `   Comments: ${result.comments.toLocaleString()}\n`;
+        text += `   Status: ${status}\n`;
+        if (result.isRemoved) {
+            text += `   Removal Reason: ${result.removalReason}\n`;
+        }
+        text += `   Link: ${result.permalink}\n`;
+        text += '\n';
+    });
+    
+    const removedCount = upvoteResults.filter(r => r.isRemoved && r.removedBy !== 'mod').length;
+    const modRemovedCount = upvoteResults.filter(r => r.isRemoved && r.removedBy === 'mod').length;
+    const activeCount = upvoteResults.length - removedCount - modRemovedCount;
+    
+    text += `\nSummary:\n`;
+    text += `Total Posts: ${upvoteResults.length}\n`;
+    text += `Alive: ${activeCount}\n`;
+    text += `Filtered (by Reddit): ${removedCount}\n`;
+    text += `Removed by Mods: ${modRemovedCount}\n`;
+    text += `Total Upvotes: ${upvoteResults.reduce((sum, r) => sum + r.upvotes, 0).toLocaleString()}\n`;
+    
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copyUpvoteDataBtn');
+        const old = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.background = '#218838';
+        setTimeout(() => {
+            btn.textContent = old;
+            btn.style.background = '';
+        }, 2000);
+    });
+}
+
+function exportUpvotesToCSV() {
+    if (upvoteResults.length === 0) return;
+    
+    let csv = 'Title,Subreddit,Author,Upvotes,Ratio,Comments,Flair,Awards,NSFW,Status,Removal Reason,Created,URL\n';
+    
+    upvoteResults.forEach(result => {
+        const title = result.title.replace(/"/g, '""');
+        let status;
+        if (!result.isRemoved) {
+            status = 'Alive';
+        } else if (result.removedBy === 'mod') {
+            status = 'Removed by Mods';
+        } else {
+            status = 'Filtered';
+        }
+        const removalReason = result.isRemoved ? result.removalReason.replace(/"/g, '""') : 'N/A';
+        csv += `"${title}","${result.subreddit}","${result.author}","${result.upvotes}","${result.upvoteRatio}","${result.comments}","${result.flair}","${result.awards}","${result.isNSFW ? 'Yes' : 'No'}","${status}","${removalReason}","${result.created}","${result.permalink}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reddit-upvotes-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
 </script>
 </body>
 </html>
